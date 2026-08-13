@@ -15,8 +15,8 @@ pub struct Point {
 
 /// A single IMU sample (6-axis).
 ///
-/// Units follow the lidar protocol (Mid-360: gyro in rad/s, accel in m/s²),
-/// delivered by the SDK as raw floats.
+/// Units per the official Mid-360 protocol: **gyro in rad/s, accel in g**
+/// (1 g ≈ 9.80665 m/s²), delivered by the SDK as raw floats.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ImuPoint {
     pub gyro_x: f32,

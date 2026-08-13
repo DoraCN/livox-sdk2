@@ -30,7 +30,7 @@ fn main() {
             println!("lidar {handle} type {dev_type}: {count} imu samples/s",);
             if let Some(s) = last_sample {
                 println!(
-                    "  latest: gyro=({:.4}, {:.4}, {:.4}) rad/s acc=({:.4}, {:.4}, {:.4}) m/s^2",
+                    "  latest: gyro=({:.4}, {:.4}, {:.4}) rad/s acc=({:.4}, {:.4}, {:.4}) g",
                     s.gyro_x, s.gyro_y, s.gyro_z, s.acc_x, s.acc_y, s.acc_z
                 );
             }
