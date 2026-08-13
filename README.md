@@ -34,16 +34,47 @@ use livox_sdk2::Sdk;
 
 fn main() {
     let mut sdk = Sdk::new("mid360_config.json").expect("failed to init SDK");
+
+    // Discover devices / verify which IPs are LiDARs:
+    for dev in sdk.devices() {
+        println!("{} @ {} (SN {})", dev.type_name(), dev.lidar_ip, dev.sn);
+    }
+
+    // Get parsed point clouds directly (x/y/z in meters + reflectivity):
     sdk.set_point_cloud_callback(|handle, dev_type, packet| {
-        println!(
-            "lidar {handle} (type {dev_type}): {} points, {} bytes",
-            packet.dot_num(),
-            packet.data().len()
-        );
+        let cloud: Vec<_> = packet.points();
+        println!("lidar {handle} (type {dev_type}): {} points", cloud.len());
     });
+
     sdk.run();
 }
 ```
+
+## High-level API
+
+- **`Sdk::devices()`** — snapshot of every LiDAR the SDK has connected, each
+  with its real `sn` and `lidar_ip`.
+- **`Sdk::set_device_change_callback(...)`** — notified whenever a device
+  connects or its info changes.
+- **`Packet::points()`** — parses the raw payload into `Vec<Point>` (meters),
+  auto-selecting Cartesian high/low, spherical, or double-echo format from the
+  packet's `data_type`.
+- **`Packet::data()`** — raw payload bytes for custom parsing (e.g. IMU).
+
+## Which IP is a LiDAR?
+
+The SDK broadcasts a detection packet on UDP port `56000`. Every LiDAR on the
+same subnet replies and the SDK connects to it, then reports it through the
+device-info callback. The **authoritative** way to know which IPs are LiDARs is
+therefore `Sdk::devices()` (or `set_device_change_callback`) after
+`LivoxLidarSdkStart`:
+
+- If an IP listed in your config's `lidar_ip` never shows up in `devices()`,
+  it is not a reachable LiDAR (wrong subnet, no cable, or powered off).
+- Prerequisites: the host NIC must have a static IP on the same subnet as the
+  LiDAR (e.g. `192.168.1.5/24` for Mid-360 default `192.168.1.3`).
+- You can also `ping <candidate-ip>` as a cheap reachability check, but only
+  the SDK's device report confirms it is actually a LiDAR.
 
 ## Building on Jetson / cross compiling
 

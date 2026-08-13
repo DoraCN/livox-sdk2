@@ -10,23 +10,33 @@
 //! use livox_sdk2::Sdk;
 //!
 //! let mut sdk = Sdk::new("mid360_config.json").expect("failed to init SDK");
+//!
+//! // Which IPs are LiDARs? The SDK reports every device it finds:
+//! for dev in sdk.devices() {
+//!     println!("{} @ {} (SN {})", dev.type_name(), dev.lidar_ip, dev.sn);
+//! }
+//!
+//! // Get parsed point clouds directly:
 //! sdk.set_point_cloud_callback(|handle, dev_type, packet| {
-//!     println!(
-//!         "lidar {handle} (type {dev_type}): {} points, {} bytes",
-//!         packet.dot_num(),
-//!         packet.data().len()
-//!     );
+//!     let cloud: Vec<_> = packet.points();
+//!     println!("lidar {handle} (type {dev_type}): {} points", cloud.len());
 //! });
 //! sdk.run(); // blocks until Ctrl-C, then uninitializes on drop
 //! ```
 
-use livox_sdk2_sys as ffi;
+mod device;
+mod points;
+
+pub use device::DeviceInfo;
+pub use points::Point;
+
+pub(crate) use livox_sdk2_sys as ffi;
+
 use std::os::raw::{c_char, c_void};
 use std::sync::{Mutex, OnceLock};
 
 /// Size of the `LivoxLidarEthernetPacket` header (bytes before `data`).
-const PACKET_HEADER_SIZE: usize =
-    std::mem::offset_of!(ffi::LivoxLidarEthernetPacket, data);
+const PACKET_HEADER_SIZE: usize = std::mem::offset_of!(ffi::LivoxLidarEthernetPacket, data);
 
 type PointCloudHandler = Box<dyn FnMut(u32, u8, Packet<'_>) + Send>;
 type ImuHandler = Box<dyn FnMut(u32, u8, Packet<'_>) + Send>;
@@ -43,6 +53,9 @@ static INFO_CB: OnceLock<Mutex<Option<InfoHandler>>> = OnceLock::new();
 /// type copies every scalar field out with unaligned reads and exposes the
 /// point/IMU payload as a byte slice. It borrows the packet, which is only
 /// valid for the duration of the callback it was delivered to.
+///
+/// Use [`Packet::points`] to obtain the parsed point cloud, or [`Packet::data`]
+/// for the raw payload bytes.
 #[derive(Copy, Clone)]
 pub struct Packet<'a> {
     raw: &'a ffi::LivoxLidarEthernetPacket,
@@ -171,6 +184,8 @@ impl Sdk {
     /// Initializes and starts the SDK from a JSON config file.
     ///
     /// `config_path` points to a Livox config file such as `mid360_config.json`.
+    /// A device-registry callback is installed so that [`Sdk::devices`] reflects
+    /// every LiDAR the SDK detects.
     pub fn new(config_path: &str) -> Result<Self, String> {
         let path = std::ffi::CString::new(config_path).map_err(|_| "config path contains NUL")?;
         let host_ip = std::ffi::CString::new("").unwrap();
@@ -179,12 +194,35 @@ impl Sdk {
         if !ok {
             return Err("LivoxLidarSdkInit failed".to_string());
         }
+        device::init();
         let ok = unsafe { ffi::LivoxLidarSdkStart() };
         if !ok {
             unsafe { ffi::LivoxLidarSdkUninit() };
             return Err("LivoxLidarSdkStart failed".to_string());
         }
         Ok(Self { _private: () })
+    }
+
+    /// Snapshot of all LiDAR devices currently known to the SDK.
+    ///
+    /// Each entry contains the device's real `lidar_ip` — this is the
+    /// authoritative answer to "which IP is a LiDAR". IPs listed in the config
+    /// that never appear here were not reachable (wrong subnet, cable, or the
+    /// device is off).
+    pub fn devices(&self) -> Vec<DeviceInfo> {
+        device::snapshot()
+    }
+
+    /// Registers a callback invoked whenever a device connects or its info changes.
+    pub fn set_device_change_callback<F>(&mut self, f: F)
+    where
+        F: FnMut(DeviceInfo) + Send + 'static,
+    {
+        device::DEVICE_CB
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .unwrap()
+            .replace(Box::new(f));
     }
 
     /// Registers the point-cloud callback.
