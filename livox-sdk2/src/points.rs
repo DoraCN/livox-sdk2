@@ -13,6 +13,20 @@ pub struct Point {
     pub tag: u8,
 }
 
+/// A single IMU sample (6-axis).
+///
+/// Units follow the lidar protocol (Mid-360: gyro in rad/s, accel in m/s²),
+/// delivered by the SDK as raw floats.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ImuPoint {
+    pub gyro_x: f32,
+    pub gyro_y: f32,
+    pub gyro_z: f32,
+    pub acc_x: f32,
+    pub acc_y: f32,
+    pub acc_z: f32,
+}
+
 impl Point {
     /// True for the special Livox "0x100/0x101 invalid points" convention
     /// used to mark the blind spot / invalid returns.
@@ -26,6 +40,7 @@ const CARTESIAN_HIGH_SIZE: usize = 14;
 const CARTESIAN_LOW_SIZE: usize = 8;
 const SPHERICAL_SIZE: usize = 12;
 const DOUBLE_ECHO_SIZE: usize = 28;
+const IMU_SAMPLE_SIZE: usize = 24;
 
 impl crate::Packet<'_> {
     /// Parses the raw payload into a `Vec<Point>`.
@@ -51,6 +66,32 @@ impl crate::Packet<'_> {
             _ => Vec::new(),
         }
     }
+
+    /// Parses the raw payload into IMU samples.
+    ///
+    /// Returns an empty vector for point-cloud packets (checked via
+    /// `data_type == kLivoxLidarImuData`).
+    pub fn imu_points(&self) -> Vec<ImuPoint> {
+        if self.data_type() != ffi::LivoxLidarPointDataType_kLivoxLidarImuData as u8 {
+            return Vec::new();
+        }
+        parse_imu(self.data())
+    }
+}
+
+fn parse_imu(data: &[u8]) -> Vec<ImuPoint> {
+    let mut out = Vec::with_capacity(data.len() / IMU_SAMPLE_SIZE);
+    for c in data.chunks_exact(IMU_SAMPLE_SIZE) {
+        out.push(ImuPoint {
+            gyro_x: f32::from_le_bytes(c[0..4].try_into().unwrap()),
+            gyro_y: f32::from_le_bytes(c[4..8].try_into().unwrap()),
+            gyro_z: f32::from_le_bytes(c[8..12].try_into().unwrap()),
+            acc_x: f32::from_le_bytes(c[12..16].try_into().unwrap()),
+            acc_y: f32::from_le_bytes(c[16..20].try_into().unwrap()),
+            acc_z: f32::from_le_bytes(c[20..24].try_into().unwrap()),
+        });
+    }
+    out
 }
 
 fn parse_cartesian_high(data: &[u8]) -> Vec<Point> {
@@ -195,6 +236,21 @@ mod tests {
     fn truncated_data_yields_partial_or_empty() {
         assert!(parse_cartesian_high(&[0u8; 13]).is_empty());
         assert_eq!(parse_cartesian_high(&[0u8; 28]).len(), 2);
+    }
+
+    #[test]
+    fn imu_samples() {
+        let mut buf = [0u8; 48]; // two 24-byte samples
+        buf[0..4].copy_from_slice(&0.1f32.to_le_bytes());
+        buf[4..8].copy_from_slice(&(-0.2f32).to_le_bytes());
+        buf[12..16].copy_from_slice(&9.8f32.to_le_bytes());
+        buf[24..28].copy_from_slice(&0.5f32.to_le_bytes());
+        let imus = parse_imu(&buf);
+        assert_eq!(imus.len(), 2);
+        assert!((imus[0].gyro_x - 0.1).abs() < 1e-6);
+        assert!((imus[0].gyro_y - -0.2).abs() < 1e-6);
+        assert!((imus[0].acc_x - 9.8).abs() < 1e-6);
+        assert!((imus[1].gyro_x - 0.5).abs() < 1e-6);
     }
 
     #[test]

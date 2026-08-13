@@ -28,7 +28,7 @@ mod device;
 mod points;
 
 pub use device::DeviceInfo;
-pub use points::Point;
+pub use points::{ImuPoint, Point};
 
 pub(crate) use livox_sdk2_sys as ffi;
 

@@ -70,6 +70,7 @@ fn main() {
 | `cargo run --release --example version` | Smoke test — prints linked SDK version; no LiDAR required. |
 | `cargo run --release --example discover -- <config.json>` | Lists every LiDAR found with real IP/SN. |
 | `cargo run --release --example point_cloud -- <config.json> [secs]` | Parses and counts points per second. |
+| `cargo run --release --example imu -- <config.json> [secs]` | Parses and counts 6-axis IMU samples per second. |
 
 ## Which IP is a LiDAR?
 

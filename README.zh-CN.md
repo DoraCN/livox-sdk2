@@ -66,6 +66,7 @@ fn main() {
 | `cargo run --release --example version` | 冒烟测试——打印链接的 SDK 版本，无需雷达。 |
 | `cargo run --release --example discover -- <config.json>` | 列出发现的雷达及真实 IP/SN。 |
 | `cargo run --release --example point_cloud -- <config.json> [秒数]` | 解析并统计每秒点数。 |
+| `cargo run --release --example imu -- <config.json> [秒数]` | 解析并统计每秒 6 轴 IMU 采样数。 |
 
 ## 如何验证哪个 IP 是激光雷达？
 
