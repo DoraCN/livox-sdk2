@@ -1,10 +1,11 @@
 [package]
 name = "livox-sdk2-sys"
-version = "0.1.0"
-edition = "2021"
-license = "MIT"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "Raw FFI bindings to the Livox SDK2 (HAP / Mid-360). The official C++ SDK is vendored and compiled from source at build time."
-repository = "https://github.com/Livox-SDK/Livox-SDK2"
+repository.workspace = true
+rust-version.workspace = true
 categories = ["api-bindings", "hardware-support"]
 keywords = ["livox", "lidar", "sdk", "ffi", "bindings"]
 links = "livox_lidar_sdk"
