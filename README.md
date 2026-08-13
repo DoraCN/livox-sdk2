@@ -1,5 +1,7 @@
 # Livox SDK2 for Rust
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Rust bindings for the [Livox SDK2](https://github.com/Livox-SDK/Livox-SDK2)
 (HAP / Mid-360 LiDARs), designed for ARM (e.g. NVIDIA Jetson) and x86_64.
 
@@ -61,6 +63,14 @@ fn main() {
   packet's `data_type`.
 - **`Packet::data()`** — raw payload bytes for custom parsing (e.g. IMU).
 
+## Examples (also used for testing on a fresh board)
+
+| Example | Purpose |
+|---------|---------|
+| `cargo run --release --example version` | Smoke test — prints linked SDK version; no LiDAR required. |
+| `cargo run --release --example discover -- <config.json>` | Lists every LiDAR found with real IP/SN. |
+| `cargo run --release --example point_cloud -- <config.json> [secs]` | Parses and counts points per second. |
+
 ## Which IP is a LiDAR?
 
 The SDK broadcasts a detection packet on UDP port `56000`. Every LiDAR on the
@@ -76,83 +86,89 @@ therefore `Sdk::devices()` (or `set_device_change_callback`) after
 - You can also `ping <candidate-ip>` as a cheap reachability check, but only
   the SDK's device report confirms it is actually a LiDAR.
 
-## Config file: `mid360_config.json` parameter reference
+## Config file reference (`mid360_config.json`)
 
 The config is a JSON file passed to `Sdk::new` / `LivoxLidarSdkInit`. This
 reference covers the Mid-360 sample (`livox-sdk2/examples/mid360_config.json`);
-the structure is identical for `HAP`, `Mid360s` and `Avia2` sections.
+the structure is identical for the `HAP`, `Mid360s` and `Avia2` sections.
 
 ### Structure overview
 
 ```json
 {
-  "master_sdk": true,              // [可选] 全局
-  "lidar_log_enable": false,       // [可选] 全局
-  "lidar_log_cache_size_MB": 500,  // [可选] 全局
-  "lidar_log_path": "./",          // [可选] 全局
+  "master_sdk": true,              // [optional] global
+  "lidar_log_enable": false,       // [optional] global
+  "lidar_log_cache_size_MB": 500,  // [optional] global
+  "lidar_log_path": "./",          // [optional] global
 
-  "MID360": {                       // 设备类型段：MID360 / HAP / Mid360s / Avia2
-    "lidar_net_info": { ... },      // 雷达侧端口（出厂默认，一般不改）
-    "host_net_info": [ ... ]        // 主机侧配置（数组或单个对象）
+  "MID360": {                       // device-type section: MID360 / HAP / Mid360s / Avia2
+    "lidar_net_info": { ... },      // lidar-side ports (factory defaults, usually unchanged)
+    "host_net_info": [ ... ]        // host-side config (array or single object)
   }
 }
 ```
 
 ### Global (top-level) fields
 
-| 字段 | 类型 | 必填 | 默认 | 说明 |
-|------|------|------|------|------|
-| `master_sdk` | bool | 否 | `true` | `true`=主 SDK（可发控制命令并收数据）；`false`=从 SDK（仅收组播点云）。**同一网段只允许一个主 SDK**。 |
-| `lidar_log_enable` | bool | 否 | `false` | 是否开启雷达固件日志（写入文件）。 |
-| `lidar_log_cache_size_MB` | uint | 否 | `500` | 日志缓存大小（MB）。仅在 `lidar_log_enable` 存在时被读取。 |
-| `lidar_log_path` | string | 否 | `"./"` | 固件日志保存目录。 |
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `master_sdk` | bool | no | `true` | `true` = master SDK (sends commands + receives data); `false` = slave SDK (multicast point cloud only). **Only one master allowed per subnet.** |
+| `lidar_log_enable` | bool | no | `false` | Enable lidar firmware logging to file. |
+| `lidar_log_cache_size_MB` | uint | no | `500` | Log cache size in MB. Only read when `lidar_log_enable` is present. |
+| `lidar_log_path` | string | no | `"./"` | Directory for firmware log files. |
 
-> 注意：SDK 中 `lidar_log_enable` 存在但缺少 `lidar_log_cache_size_MB`/`lidar_log_path`
-> 时，配置解析会报错；若不需要日志，直接省略整组字段即可（默认禁用）。
+> If `lidar_log_enable` is present but `lidar_log_cache_size_MB` / `lidar_log_path`
+> are missing, config parsing fails. Omit the whole log group to keep logs disabled.
 
-### Device-type section（`MID360` / `HAP` / `Mid360s` / `Avia2`）
+### Device-type section (`MID360` / `HAP` / `Mid360s` / `Avia2`)
 
-#### `lidar_net_info`（雷达侧端口，出厂固定，必填）
+#### `lidar_net_info` (lidar-side ports, factory defaults, required)
 
-| 字段 | 类型 | 必填 | Mid-360 默认 | 说明 |
-|------|------|------|------|------|
-| `cmd_data_port` | uint | 是 | `56100` | 收发控制命令的端口 |
-| `push_msg_port` | uint | 是 | `56200` | 接收推送消息端口 |
-| `point_data_port` | uint | 是 | `56300` | 接收点云数据端口 |
-| `imu_data_port` | uint | 是 | `56400` | 接收 IMU 数据端口 |
-| `log_data_port` | uint | 是 | `56500` | 接收固件日志端口 |
+| Field | Type | Required | Mid-360 default | Description |
+|-------|------|----------|-----------------|-------------|
+| `cmd_data_port` | uint | yes | `56100` | Control command port |
+| `push_msg_port` | uint | yes | `56200` | Push message port |
+| `point_data_port` | uint | yes | `56300` | Point cloud data port |
+| `imu_data_port` | uint | yes | `56400` | IMU data port |
+| `log_data_port` | uint | yes | `56500` | Firmware log port |
 
-> HAP 的默认端口不同（`56000/57000/58000/59000`，见官方 HAP 文档），其他段参数含义一致。
+> HAP uses different defaults (56000/57000/58000/59000, see the official HAP
+> docs); the field meanings are identical.
 
-#### `host_net_info`（主机侧配置）
+#### `host_net_info` (host-side config)
 
-两种写法，SDK 都能解析：
+Two forms are accepted:
 
-- **数组（新写法，推荐）**：每一项是一个主机，可多主机并存；可带 `lidar_ip` 列表。
-- **对象（旧写法）**：单个主机，自动发现模式（无 `lidar_ip`）。
+- **Array (new style, recommended)** — one entry per host; may carry a `lidar_ip` list.
+- **Object (old style)** — single host in auto-discovery mode (no `lidar_ip`).
 
-数组项字段：
+Array-entry fields:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `host_ip` | string | 是 | 本机（Jetson）网卡 IP，SDK 绑定端口和接收数据都依赖它。**必须已配置在该网卡上**，否则 bind 失败。 |
-| `lidar_ip` | string[] | 否 | 要连接的雷达 IP 列表。**省略 = 广播自动发现**（SDK 在 UDP 56000 发探测包，雷达自动应答接入）；填写 = 直连指定 IP。 |
-| `multicast_ip` | string | 否 | 点云/IMU 组播地址（如 `224.1.1.5`）。用于多主机共享数据的场景。 |
-| `cmd_data_port` | uint | 是 | 主机侧控制端口（如 `56101`） |
-| `push_msg_port` | uint | 是 | 主机侧推送消息端口（如 `56201`） |
-| `point_data_port` | uint | 是 | 主机侧点云端口（如 `56301`） |
-| `imu_data_port` | uint | 是 | 主机侧 IMU 端口（如 `56401`） |
-| `log_data_port` | uint | 是 | 主机侧日志端口（如 `56501`） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `host_ip` | string | yes | This host's NIC IP. The SDK binds ports and receives data on it. **Must be actually assigned to the NIC**, otherwise the bind fails. |
+| `lidar_ip` | string[] | no | LiDAR IPs to connect to. **Omit = broadcast auto-discovery** (SDK sends a detection packet on UDP 56000 and connects to responding LiDARs); fill in = direct connect. |
+| `multicast_ip` | string | no | Multicast address for point cloud / IMU (e.g. `224.1.1.5`), for multi-host sharing. |
+| `cmd_data_port` | uint | yes | Host control port (e.g. `56101`) |
+| `push_msg_port` | uint | yes | Host push message port (e.g. `56201`) |
+| `point_data_port` | uint | yes | Host point cloud port (e.g. `56301`) |
+| `imu_data_port` | uint | yes | Host IMU port (e.g. `56401`) |
+| `log_data_port` | uint | yes | Host log port (e.g. `56501`) |
 
-> `lidar_ip` 也可用别名 `cmd_data_ip`（此时可省略 `host_ip`）。`host_ip` 与
-> `cmd_data_ip` 同时存在时以 `host_ip` 为准。
+> `lidar_ip` may be replaced by the alias `cmd_data_ip` (in which case
+> `host_ip` becomes optional). When both `host_ip` and `cmd_data_ip` are
+> present, `host_ip` wins.
 
-### 快速核对清单（Jetson 部署）
+### Quick checklist (Jetson deployment)
 
-1. `host_ip` = Jetson 网卡**实际已配置**的 IP（`ip addr` 确认），否则报 `bind failed`。
-2. 雷达与 Jetson 同网段（Mid-360 默认 `192.168.1.x`）。
-3. 单雷达单主机：保持样例中的 `host_net_info` 数组写法、省略 `lidar_ip` 即可自动发现。
-4. 多雷达：在 `lidar_ip` 里列出各雷达 IP，或按官方协议配置组播。
+1. `host_ip` must be an IP **already assigned** to the Jetson NIC (confirm with
+   `ip addr`), otherwise the SDK fails with `bind failed`.
+2. The LiDAR and Jetson must be on the same subnet (Mid-360 defaults to
+   `192.168.1.x`).
+3. Single LiDAR, single host: keep the sample `host_net_info` array and omit
+   `lidar_ip` for auto-discovery.
+4. Multiple LiDARs: list each IP in `lidar_ip`, or configure multicast per the
+   official protocol.
 
 ## Building on Jetson / cross compiling
 
