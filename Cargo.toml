@@ -6,8 +6,8 @@ members = ["livox-sdk2-sys", "livox-sdk2"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/DoraCN/livox-sdk2"
-version = "0.1.0"
+version = "0.1.1"
 rust-version = "1.77"
 
 [workspace.dependencies]
-livox-sdk2-sys = { path = "livox-sdk2-sys", version = "0.1.0" }
+livox-sdk2-sys = { path = "livox-sdk2-sys", version = "0.1.1" }
