@@ -1,0 +1,19 @@
+# Rust build artifacts
+/target
+**/*.rs.bk
+
+# Cargo.lock is not published for libraries; keep it out of the repo
+Cargo.lock
+
+# Livox-SDK2 vendored build outputs (never build in-tree)
+**/vendor/**/build/
+
+# Editors / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Logs / temp
+*.log
+/tmp/

@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["livox-sdk2-sys", "livox-sdk2"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/Livox-SDK/Livox-SDK2"
+version = "0.1.0"
+
+[workspace.dependencies]
+livox-sdk2-sys = { path = "livox-sdk2-sys", version = "0.1.0" }

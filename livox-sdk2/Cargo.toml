@@ -1,0 +1,12 @@
+[package]
+name = "livox-sdk2"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Safe high-level Rust bindings for the Livox SDK2 (HAP / Mid-360 LiDARs). Vendors and builds the official SDK from source."
+repository = "https://github.com/Livox-SDK/Livox-SDK2"
+categories = ["api-bindings", "hardware-support"]
+keywords = ["livox", "lidar", "sdk", "point-cloud"]
+
+[dependencies]
+livox-sdk2-sys = { workspace = true }
