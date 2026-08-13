@@ -6,6 +6,7 @@ license.workspace = true
 description = "Raw FFI bindings to the Livox SDK2 (HAP / Mid-360). The official C++ SDK is vendored and compiled from source at build time."
 repository.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 categories = ["api-bindings", "hardware-support"]
 keywords = ["livox", "lidar", "sdk", "ffi", "bindings"]
 links = "livox_lidar_sdk"

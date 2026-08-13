@@ -6,6 +6,7 @@ license.workspace = true
 description = "Safe high-level Rust bindings for the Livox SDK2 (HAP / Mid-360 LiDARs). Vendors and builds the official SDK from source."
 repository.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 categories = ["api-bindings", "hardware-support"]
 keywords = ["livox", "lidar", "sdk", "point-cloud"]
 
