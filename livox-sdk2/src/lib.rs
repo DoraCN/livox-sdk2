@@ -180,6 +180,24 @@ pub struct Sdk {
     _private: (),
 }
 
+/// Returns the version of the linked Livox SDK2 as `(major, minor, patch)`.
+///
+/// Safe to call without initializing the SDK.
+pub fn sdk_version() -> (i32, i32, i32) {
+    let mut v = ffi::LivoxLidarSdkVer {
+        major: 0,
+        minor: 0,
+        patch: 0,
+    };
+    // SAFETY: `v` is a valid out-pointer; the struct is `#[repr(C, packed)]`
+    // so fields are read unaligned.
+    unsafe { ffi::GetLivoxLidarSdkVer(&mut v) };
+    let major = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!(v.major)) };
+    let minor = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!(v.minor)) };
+    let patch = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!(v.patch)) };
+    (major, minor, patch)
+}
+
 impl Sdk {
     /// Initializes and starts the SDK from a JSON config file.
     ///
